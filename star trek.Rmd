@@ -28,9 +28,10 @@ You can also embed plots, for example:
 
 ```{r pressure, echo=FALSE}
 library(rvest)
+rating_scraper <- function(tconst){
 ep_name = '//*[(@id = "main")]//h3//a'
 ep_year = '///h3//*[contains(concat( " ", @class, " " ), concat( " ", "nobr", " " ))]'
-gen_ratings <- '//table[(((count(preceding-sibling::*) + 1) = 14) and parent::*)]//div'
+gen_ratings <- '//*[contains(concat( " ", @class, " " ), concat( " ", "leftAligned", " " ))]'
 demo_ratings <- '//table[(((count(preceding-sibling::*) + 1) = 14) and parent::*)]//*[contains(concat( " ", @class, " " ), concat( " ", "bigcell", " " ))]'
 demo_votes<- '//table[(((count(preceding-sibling::*) + 1) = 14) and parent::*)]//*[contains(concat( " ", @class, " " ), concat( " ", "smallcell", " " ))]'
 url <- html("https://www.imdb.com/title/tt0572211/ratings?ref_=tt_ov_rt")
@@ -39,31 +40,29 @@ year <- url %>% html_nodes(xpath = ep_year) %>% html_text() %>% str_extract('\\d
 demos <- url %>% html_nodes(xpath = demo_ratings) %>%
   html_text() %>% as.numeric()
 demo <- tibble(men = c(demos[8],demos[9],demos[10]),
-               females = c(demos[13],demos[14],demos[15]))
+               feemales = c(demos[13],demos[14],demos[15]))
 
-# sub_rate_cols <- c('all.10','all.9','all.8','all.7','all.6','all.5','all.4','all.3','all.2','all.1')
-# test <- tibble(page,rat=c(10:1))
-# test <- test %>% spread(page,rat)
+g_ratings <- url %>% html_nodes(xpath = gen_ratings) %>% html_text()
+#g_ratings <- ratings[2:11] %>% as.numeric() %>% tibble()
 
-
+ratings <- bind_cols(tconst = tconst,name=name,year=year,
+                     mz=demos[8],my=demos[9],mx=demos[10],
+                     fz=demos[13],fy=demos[14],fx=demos[15],
+                     a10 = as.numeric(g_ratings[2]),
+                     a9 = as.numeric(g_ratings[3]),
+                     a8 = as.numeric(g_ratings[4]),
+                     a7 = as.numeric(g_ratings[5]),
+                     a6 = as.numeric(g_ratings[6]),
+                     a5 = as.numeric(g_ratings[7]),
+                     a4 = as.numeric(g_ratings[8]),
+                     a3 = as.numeric(g_ratings[9]),
+                     a2 = as.numeric(g_ratings[10]),
+                     a1 = as.numeric(g_ratings[11]))
+return (ratings)
+}
 ```
 
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
 ```{r}
-test <- tibble(zm_avg = c((page[22]*page[23]+page[24]*page[25])/(page[23]+page[25])),
-               zm_votes = c(page[23]+page[25]),
-               ym_avg = c(page[26]),
-               ym_votes = c(page[27]),
-               xm_avg = c(page[28]),
-               xm_votes = c(page[29]),
-               zf_avg = if_else(page[34]==0,
-                                c(page[35]),
-                                c((page[34]*page[35]+page[36]*page[37])/(page[35]+page[37]))),
-               zf_votes =if_else(page[34]==0,
-                                c(page[36]),
-                                c((page[35]+page[37]))),
-               yf_avg = c(page[37]),
-               yf_votes= c(page[38]),
-               xf_avg= c(page[39]),
-               xf_votes= c(page[40]))
+
 ```
