@@ -17,9 +17,16 @@ When you click the **Knit** button a document will be generated that includes bo
 
 ```{r first, echo=FALSE}
 library(tidyverse)
-rate <- read_tsv("C:\\Users\\Dillon\\Desktop\\rate.tsv")
-show_names <- tbl_df(data.frame(series_name=c('Star Trek','Star Trek: The Next Generation','Star Trek: Deep Space Nine','Star Trek: Voyager','Star Trek: Enterprise','Star Trek: Discovery'),
-                     parentTconst=c('tt0060028','tt0092455','tt0106145','tt0112178','tt0244365','tt5171438')))
+rate <- read_tsv("C:\\Users\\Dillon\\Desktop\\rate.tsv") %>% 
+  mutate(parentTconst = tconst)
+show_names <- tbl_df(data.frame(series_name=c('Star Trek','Star Trek: The Next Generation',
+                                              'Star Trek: Deep Space Nine','Star Trek: Voyager',
+                                              'Star Trek: Enterprise','Star Trek: Discovery'),
+                               parentTconst=c('tt0060028','tt0092455','tt0106145','tt0112178',
+                                              'tt0244365','tt5171438'))) %>%   left_join(rate,by='parentTconst') %>% 
+  mutate(series_avg = averageRating) %>%
+select(-c('tconst','averageRating','numVotes'))
+
 episodes <- read_tsv("C:\\Users\\Dillon\\Desktop\\episodes.tsv")
 shows <- show_names %>% left_join(episodes, by='parentTconst') %>% left_join(rate,by='tconst')
 ```
@@ -80,11 +87,26 @@ Note that the `echo = FALSE` parameter was added to the code chunk to prevent pr
 #showss <- tbg %>% distinct() %>% right_join(shows,by='tconst')
 #showss <- showss %>% mutate(demo_adj = mz*.235+my*.173+mx*.1484+fz*.184+fy*.1364+fx*.1166)
 #tst$mz*.235+tst$my*.173+tst$mx*.1484+tst$fz*.184+tst$fy*.1364+tst$fx*.1166
-tbg <- read_csv("C:\\Users\\Dillon\\Desktop\\scrape.csv")
+tbg <- read_csv("C:\\Users\\Dillon\\Desktop\\scrape.csv") %>%
+  select(-c('series_name')) %>%
+  left_join(show_names,by='parentTconst') %>%
+  mutate(demo_adj = mz/6+my/6+mx/6+fz/6+fy/6+fx/6)%>%
+  select(c('tconst','name','year','series_name','seasonNumber','episodeNumber','averageRating','numVotes','demo_adj','series_avg')) %>% mutate(demo_adj = round((demo_adj),1))
 tos <- tbg %>% filter(series_name == 'Star Trek')
 tng <- tbg %>% filter(series_name == 'Star Trek: The Next Generation')
 ds9 <- tbg %>% filter(series_name == 'Star Trek: Deep Space Nine')
 voy <- tbg %>% filter(series_name == 'Star Trek: Voyager')
 ent <- tbg %>% filter(series_name == 'Star Trek: Enterprise')
 dis <- tbg %>% filter(series_name == 'Star Trek: Discovery')
+dem <- tbg %>% group_by(series_name) %>%
+  summarise(meany = mean(averageRating),adjmean = mean(demo_adj), series = mean(series_avg))
 ```
+
+```{r}
+crew_scraper <- function(tconst,original){
+crew_path <- '//*[contains(concat( " ", @class, " " ), concat( " ", "dataHeaderWithBorder", " " ))] | //*[contains(concat( " ", @class, " " ), concat( " ", "name", " " ))] | //*[contains(concat( " ", @class, " " ), concat( " ", "credit", " " ))]'
+cp2 <- '//td'
+url <- read_html(str_c("https://www.imdb.com/title/",tconst,"/fullcredits/?ref_=tt_ov_st_sm"))
+tabl <- url %>% html_nodes(xpath = cp2) %>% html_text() %>% tibble() %>% filter(. != '...')
+```
+
