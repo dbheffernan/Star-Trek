@@ -108,6 +108,103 @@ cp2 <- '//td'
 url <- read_html(str_c("https://www.imdb.com/title/",tconst,"/fullcredits/?ref_=tt_ov_st_sm"))
 tabl <- url %>% html_table(fill = TRUE)
 direct <- tabl[[1]][1] %>% str_c()
-return(direct)}
+writers <- tabl[[2]] %>% 
+  tbl_df()%>%
+  rename(name=X1,role=X3) %>% 
+  select(c('name','role'))%>%
+  filter(name != '')%>% 
+  mutate(role = str_trim(gsub('[[:punct:] ]+',' ',role))) %>%
+  spread(role,name)
+return(writers)}
+```
+
+
+```{r}
+crews <- read_tsv("C:\\Users\\Dillon\\Desktop\\name.tsv") %>% right_join(tbg,by='tconst')
+
+crews_big <- crews %>% 
+  transform(directors = strsplit(directors, ",")) %>%
+  unnest(directors)%>% 
+  mutate(nconst = directors) %>% 
+  left_join(names,by='nconst')%>% 
+  mutate(directors = primaryName)%>% 
+  select(-c('primaryName'))%>%
+  transform(writers = strsplit(writers, ",")) %>%
+  unnest(writers) %>% 
+  mutate(nconst = writers) %>% 
+  left_join(names,by='nconst') %>% 
+  mutate(writers = primaryName)
+mod3 <- tidy(lm(demo_adj ~ writers + directors,crews_big)) %>% tbl_df %>% filter(p.value < .05)
+```
+
+```{r}
+library(jsonlite)
+#all_lines <- fromJSON('C:\\Users\\Dillon\\Desktop\\all_series_lines.json')
+# ds9_lines <- all_lines$DS9
+# ds9_chars <- names(ds9_lines[[173]])
+# ds9_matrix <-  as_tibble(data.frame(matrix(nrow=173,ncol=length(ds9_chars))))
+# for(ep in 1:legnth(ds9_lines)){
+#   ep_num <- str_c("Episode_",(ep-1))
+#   episode_lines <- 
+# }
+
+
+
+
+
+liner <- function(show){
+  show_data <- all_lines[[show]]
+  show_characters <- names(show_data[[length(show_data)]])
+  show <- as_tibble(data.frame(matrix(data = 0, nrow=length(show_data),ncol=length(show_characters))))
+  colnames(show) <- show_characters
+  for(ep in 1:length(show_data)){
+    episode_lines <- show_data[[ep]]
+    for(char_name in show_characters){
+      char_lines <- sum(nchar(episode_lines[char_name]))
+      show[ep,char_name] <- if_else(char_lines > 9,char_lines,0L)
+    }
+      
+  }
+  return(show)
+}
+```
+
+```{r}
+tos_lines <- liner('TOS')
+tng_lines <- liner('TNG')
+ds9_lines <- liner('DS9')
+voy_lines <- liner('VOY')
+ent_lines <- liner('ENT')
+
+```
+
+```{r}
+top_tos <- tos_lines %>% summarise_all(funs(sum)) %>% gather() %>% top_n(25)
+top_tng <- tng_lines %>% summarise_all(funs(sum)) %>% gather() %>% top_n(25)
+top_ds9 <- ds9_lines %>% summarise_all(funs(sum)) %>% gather() %>% top_n(25)
+top_voy <- voy_lines %>% summarise_all(funs(sum)) %>% gather() %>% top_n(25)
+top_ent <- ent_lines %>% summarise_all(funs(sum)) %>% gather() %>% top_n(25)
+
+
+tos_lines <- tos_lines %>% select(top_tos$key)
+tng_lines <- tng_lines %>% select(top_tng$key)
+ds9_lines <- ds9_lines %>% select(top_ds9$key)
+voy_lines <- voy_lines %>% select(top_voy$key)
+ent_lines <- ent_lines %>% select(top_ent$key)
+
+tos_ <- tos %>% arrange(seasonNumber,episodeNumber)%>% bind_cols(tos_lines)%>% select(-tconst,-name,-year,-series_name,-seasonNumber,-episodeNumber,-averageRating,-numVotes,-series_avg)
+tng_ <- tng %>% arrange(seasonNumber,episodeNumber)%>% bind_cols(tng_lines)%>% select(-tconst,-name,-year,-series_name,-seasonNumber,-episodeNumber,-averageRating,-numVotes,-series_avg)
+ds9_ <- ds9 %>% arrange(seasonNumber,episodeNumber)%>% bind_cols(ds9_lines)%>% select(-tconst,-name,-year,-series_name,-seasonNumber,-episodeNumber,-averageRating,-numVotes,-series_avg)
+# voy_ <- voy %>% arrange(seasonNumber,episodeNumber)%>% bind_cols(voy_lines)%>% select(-tconst,-name,-year,-series_name,-seasonNumber,-episodeNumber,-averageRating,-numVotes,-series_avg)
+# ent_ <- ent %>% arrange(seasonNumber,episodeNumber)%>% bind_cols(ent_lines)%>% select(-tconst,-name,-year,-series_name,-seasonNumber,-episodeNumber,-averageRating,-numVotes,-series_avg)
+
+tos_mod <- lm(demo_adj ~ . ,tos_)
+tng_mod <- lm(demo_adj ~ . ,tng_)
+ds9_mod <- lm(demo_adj ~ . ,ds9_)
+# voy_mod <- lm(demo_adj ~ . ,voy_)
+# ent_mod <- lm(demo_adj ~ . ,ent_)
+
+test <- bind_rows(tos_,tng_,ds9_) %>% replace(is.na(.), 0)
+alllm <- lm(demo_adj ~ ., test)
 ```
 
