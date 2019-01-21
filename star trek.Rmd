@@ -100,6 +100,7 @@ ent <- tbg %>% filter(series_name == 'Star Trek: Enterprise')
 dis <- tbg %>% filter(series_name == 'Star Trek: Discovery')
 dem <- tbg %>% group_by(series_name) %>%
   summarise(meany = mean(averageRating),adjmean = mean(demo_adj), series = mean(series_avg))
+<<<<<<< HEAD
 ```
 
 ```{r}
@@ -208,3 +209,15 @@ test <- bind_rows(tos_,tng_,ds9_) %>% replace(is.na(.), 0)
 alllm <- lm(demo_adj ~ ., test)
 ```
 
+=======
+```
+
+```{r}
+crew_scraper <- function(tconst,original){
+crew_path <- '//*[contains(concat( " ", @class, " " ), concat( " ", "dataHeaderWithBorder", " " ))] | //*[contains(concat( " ", @class, " " ), concat( " ", "name", " " ))] | //*[contains(concat( " ", @class, " " ), concat( " ", "credit", " " ))]'
+cp2 <- '//td'
+url <- read_html(str_c("https://www.imdb.com/title/",tconst,"/fullcredits/?ref_=tt_ov_st_sm"))
+tabl <- url %>% html_nodes(xpath = cp2) %>% html_text() %>% tibble() %>% filter(. != '...')
+```
+
+>>>>>>> c81e78e66c5ce75c88e1865e799fc225d3ba1d4d
