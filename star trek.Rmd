@@ -108,6 +108,8 @@ cp2 <- '//td'
 url <- read_html(str_c("https://www.imdb.com/title/",tconst,"/fullcredits/?ref_=tt_ov_st_sm"))
 show_n<- url%>%html_nodes(xpath = '//h4//a') %>% html_text()
 tabl <- url %>% html_table(fill = TRUE)
+ep_year = '///h3//*[contains(concat( " ", @class, " " ), concat( " ", "nobr", " " ))]'
+year <- url %>% html_nodes(xpath = ep_year) %>% html_text() %>% str_extract('\\d\\d\\d\\d')%>%as.numeric()
 direct <- tabl[[1]] %>% 
   tbl_df() %>%
   rename(name=X1)%>%
@@ -136,12 +138,11 @@ if(original == 3){
   runner = tibble(showrunner = c('Fred Freiberger'))
 }
 if(original == 0){
-  if(show_n == 'Star Trek: The Next Generation'|
-     show_n == 'Star Trek: Deep Space Nine'|
-     show_n == 'Star Trek: Voyager'){
-    i <- 26}
+  big_tab <- tibble()
+  for(i in 1:length(tabl)){
+     big_tab <- bind_rows(big_tab,tabl[i])}
   
-  runner <- tabl[[i]]%>%tbl_df()%>%
+  runner <- big_tab%>%
     rename(name=X1,role=X3) %>% 
     mutate(run = str_detect(role,"showrunner")) %>%
     filter(run == TRUE)%>%
@@ -149,8 +150,10 @@ if(original == 0){
     select(showrunner) %>%
     distinct()
 }
-crew <- bind_cols(direct,writers,runner)
-return(writers)}
+if(nrow(runner)==0){runner <- tibble(showrunner ='UNKNOWN')}
+ep <- tibble(tconst = tconst)
+crew <- bind_cols(direct,writers,runner,ep)
+return(crew)}
 ```
 
 
@@ -266,8 +269,79 @@ alllm <- lm(demo_adj ~ ., test)
 
 
 ```{r}
+#tbg1 <- tbg %>% filter(series_name == 'Star Trek' & seasonNumber < 3) %>% select(tconst)
+tbg3 <- tbg %>% filter(series_name == 'Star Trek' & seasonNumber == 3)%>% select(tconst)
+#tbg0 <- tbg %>% filter(series_name != 'Star Trek')%>% select(tconst)
 
+#crew_scrape <- tibble()
+tbg0 <- tbg0 %>% anti_join(crew_scrape,by='tconst')
+for(ep in tbg0$tconst){
+  print(ep)
+  cr <- crew_scraper(ep,0)
+  crew_scrape <- bind_rows(crew_scrape,cr)}
+#for(ep in tbg3){bind_rows(crew_scrape,crew_scraper(ep,3))}
+#for(ep in tbg0){bind_rows(crew_scrape,crew_scraper(ep,0))}
+```
 
+```{r}
+crew <- crew_scrape %>% 
+  unite('story_by',`story by`,`story uncredited`,story,uncredited,
+        `television story`,`television story and`,`story concept uncredited`,
+        `story source uncredited`, sep = ',') %>%
+  mutate(story_by = str_replace_all(story_by, 'NA,+|NA,$|,$|,,NA|NA$', ''))%>%
+  unite('teleplay_by' , `teleplay by`,`rewrite uncredited`,sep=',')%>%
+  mutate(teleplay_by = str_replace_all(teleplay_by, 'NA,+|NA,$|,$|,,NA|NA$', ''))%>%
+  unite('executive_story_editor', `executive story consultant`,
+        `executive story editor uncredited`,`executive story editor`,
+        `executive story editor and`,`executive story editor as Mike Sussman`,
+        sep = ',')%>%
+  mutate(executive_story_editor = str_replace_all(
+    executive_story_editor, 'NA$', ''))%>%
+  unite('staff_writer',`show staff writer uncredited`,`staff writer`,sep=',')%>%
+  mutate(staff_writer = str_replace_all(staff_writer, 'NA,+|NA,$|,$|,,NA|NA$', ''))%>%
+  unite('story_editor', `story editor`,`story editor and`,`story editor as David Bennett Carren`,sep=',')%>%
+  mutate(story_editor = str_replace_all(story_editor, 'NA,+|NA,$|,$|,,NA|NA$', ''))%>%
+  unite('based_on',`based upon certain characters uncredited`,
+        `based in part on a premise by`,`based upon material by`,
+        `based upon material by as Anatonia Napoli`,
+        `based upon material by as Jeanna F Gallo`,
+        `Sherlock Holmes characters created by as A Conan Doyle`,
+        `based upon Star Trek created by`,`based on material by`,
+        `based on the original Star Trek episode The Trouble with Tribbles by`,sep = ',')%>%
+  mutate(based_on = str_replace_all(based_on, 'NA,+|NA,$|,$|,,NA|NA$', ''))%>%
+  mutate(story_by = str_replace_all(story_by, ',$|,,+', ''))%>%
+  mutate(written_by = str_replace_all(`written by`, ',$|,,+', ''))%>%
+  mutate(executive_story_editor = str_replace_all(
+    executive_story_editor, ',$|,,+', ''))%>%
+  mutate(staff_writer = str_replace_all(staff_writer, ',$|,,+', ''))%>%
+  mutate(story_editor = str_replace_all(story_editor, ',$|,,+', ''))%>%
+  mutate(based_on = str_replace_all(based_on, ',$|,,+', ''))%>%
+  mutate(created_by = `created by`)%>%
+  select(-`written by`,-`created by`)%>%
+  mutate(showrunner = str_replace_all(showrunner, ',$|,,+', ''))
+```
 
+```{r}
+  crew <- crew %>% 
+  mutate(written_by = strsplit(as.character(written_by), ","))%>%
+  unnest()%>%
+  mutate(story_by = strsplit(as.character(story_by), ","))%>%
+  unnest()%>%  
+  mutate(teleplay_by = strsplit(as.character(teleplay_by), ","))%>%
+  unnest()%>%  
+  mutate(director = strsplit(as.character(director), ","))%>%
+  unnest()%>%
+  mutate(showrunner = strsplit(as.character(showrunner), ","))%>%
+  unnest()%>%  
+  mutate(executive_story_editor = strsplit(as.character(executive_story_editor), ","))%>%
+  unnest()%>%  
+  mutate(staff_writer = str_split(staff_writer, ","))%>%
+  unnest()%>%  
+  mutate(story_editor = str_split(story_editor, ","))%>%
+  unnest()%>%  
+  mutate(based_on = str_split(based_on, ","))%>%
+  unnest()
+
+spew <- tbg %>% select(tconst,demo_adj) %>% right_join(crew,by='tconst')%>% select(-tconst)
 ```
 
