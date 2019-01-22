@@ -100,22 +100,56 @@ ent <- tbg %>% filter(series_name == 'Star Trek: Enterprise')
 dis <- tbg %>% filter(series_name == 'Star Trek: Discovery')
 dem <- tbg %>% group_by(series_name) %>%
   summarise(meany = mean(averageRating),adjmean = mean(demo_adj), series = mean(series_avg))
-<<<<<<< HEAD
 ```
 
 ```{r}
 crew_scraper <- function(tconst,original){
 cp2 <- '//td'
 url <- read_html(str_c("https://www.imdb.com/title/",tconst,"/fullcredits/?ref_=tt_ov_st_sm"))
+show_n<- url%>%html_nodes(xpath = '//h4//a') %>% html_text()
 tabl <- url %>% html_table(fill = TRUE)
-direct <- tabl[[1]][1] %>% str_c()
+direct <- tabl[[1]] %>% 
+  tbl_df() %>%
+  rename(name=X1)%>%
+  select(name)%>%
+  mutate(director = paste0(name,collapse = "",sep=',')) %>% 
+  select(director) %>%
+  distinct()
 writers <- tabl[[2]] %>% 
   tbl_df()%>%
   rename(name=X1,role=X3) %>% 
   select(c('name','role'))%>%
   filter(name != '')%>% 
   mutate(role = str_trim(gsub('[[:punct:] ]+',' ',role))) %>%
-  spread(role,name)
+  mutate(role = if_else(str_detect(role,'story by'),'story by',
+                if_else(str_detect(role,'teleplay by'),'teleplay by',
+                if_else(str_detect(role,'written by'),'written by',role))))%>%
+  group_by(role) %>% 
+  mutate(combined_role = paste0(name, collapse = "",sep=','))%>% 
+  select(-name) %>% 
+  distinct() %>%
+  spread(role,combined_role)
+if(original ==1 | original ==2){
+  runner = tibble(showrunner = c('Gene Roddenberry'))
+}
+if(original == 3){
+  runner = tibble(showrunner = c('Fred Freiberger'))
+}
+if(original == 0){
+  if(show_n == 'Star Trek: The Next Generation'|
+     show_n == 'Star Trek: Deep Space Nine'|
+     show_n == 'Star Trek: Voyager'){
+    i <- 26}
+  
+  runner <- tabl[[i]]%>%tbl_df()%>%
+    rename(name=X1,role=X3) %>% 
+    mutate(run = str_detect(role,"showrunner")) %>%
+    filter(run == TRUE)%>%
+    mutate(showrunner = paste0(name,collapse = "",sep=',')) %>% 
+    select(showrunner) %>%
+    distinct()
+}
+crew <- bind_cols(direct,writers,runner)
 return(writers)}
 ```
 
@@ -196,28 +230,44 @@ ent_lines <- ent_lines %>% select(top_ent$key)
 tos_ <- tos %>% arrange(seasonNumber,episodeNumber)%>% bind_cols(tos_lines)%>% select(-tconst,-name,-year,-series_name,-seasonNumber,-episodeNumber,-averageRating,-numVotes,-series_avg)
 tng_ <- tng %>% arrange(seasonNumber,episodeNumber)%>% bind_cols(tng_lines)%>% select(-tconst,-name,-year,-series_name,-seasonNumber,-episodeNumber,-averageRating,-numVotes,-series_avg)
 ds9_ <- ds9 %>% arrange(seasonNumber,episodeNumber)%>% bind_cols(ds9_lines)%>% select(-tconst,-name,-year,-series_name,-seasonNumber,-episodeNumber,-averageRating,-numVotes,-series_avg)
-# voy_ <- voy %>% arrange(seasonNumber,episodeNumber)%>% bind_cols(voy_lines)%>% select(-tconst,-name,-year,-series_name,-seasonNumber,-episodeNumber,-averageRating,-numVotes,-series_avg)
-# ent_ <- ent %>% arrange(seasonNumber,episodeNumber)%>% bind_cols(ent_lines)%>% select(-tconst,-name,-year,-series_name,-seasonNumber,-episodeNumber,-averageRating,-numVotes,-series_avg)
+voy_ <- voy %>% 
+   mutate(two = str_detect(name,"Part II")) %>%
+   filter(two == FALSE) %>%
+   arrange(seasonNumber,episodeNumber)%>% 
+   bind_cols(voy_lines)%>% 
+   select(-tconst,-name,-year,-series_name,-seasonNumber,-episodeNumber,
+          -averageRating,-numVotes,-series_avg,-two)
+ent_ <- ent %>% 
+  filter(name != 'Broken Bow: Part II') %>%
+  arrange(seasonNumber,episodeNumber)%>% 
+  bind_cols(ent_lines)%>% 
+  select(-tconst,-name,-year,-series_name,-seasonNumber,-episodeNumber,
+         -averageRating,-numVotes,-series_avg)
+
+voy_2 <- voy %>% 
+   mutate(two = str_detect(name,"Part II")) %>%
+   filter(two == FALSE) %>%
+   arrange(seasonNumber,episodeNumber)%>% 
+   bind_cols(voy_lines)%>% 
+   select(-tconst,-name,-year,-series_name,-seasonNumber,-episodeNumber,
+          -demo_adj,-numVotes,-series_avg,-two)
 
 tos_mod <- lm(demo_adj ~ . ,tos_)
 tng_mod <- lm(demo_adj ~ . ,tng_)
 ds9_mod <- lm(demo_adj ~ . ,ds9_)
-# voy_mod <- lm(demo_adj ~ . ,voy_)
-# ent_mod <- lm(demo_adj ~ . ,ent_)
+voy_mod <- lm(demo_adj ~ . ,voy_)
+ent_mod <- lm(demo_adj ~ . ,ent_)
 
-test <- bind_rows(tos_,tng_,ds9_) %>% replace(is.na(.), 0)
+test <- bind_rows(tos_,tng_,ds9_,voy_,ent_) %>% replace(is.na(.), 0)
 alllm <- lm(demo_adj ~ ., test)
 ```
 
-=======
-```
+
+
 
 ```{r}
-crew_scraper <- function(tconst,original){
-crew_path <- '//*[contains(concat( " ", @class, " " ), concat( " ", "dataHeaderWithBorder", " " ))] | //*[contains(concat( " ", @class, " " ), concat( " ", "name", " " ))] | //*[contains(concat( " ", @class, " " ), concat( " ", "credit", " " ))]'
-cp2 <- '//td'
-url <- read_html(str_c("https://www.imdb.com/title/",tconst,"/fullcredits/?ref_=tt_ov_st_sm"))
-tabl <- url %>% html_nodes(xpath = cp2) %>% html_text() %>% tibble() %>% filter(. != '...')
+
+
+
 ```
 
->>>>>>> c81e78e66c5ce75c88e1865e799fc225d3ba1d4d
