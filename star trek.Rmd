@@ -296,7 +296,7 @@ crew <- crew_scrape %>%
         `executive story editor and`,`executive story editor as Mike Sussman`,
         sep = ',')%>%
   mutate(executive_story_editor = str_replace_all(
-    executive_story_editor, 'NA$', ''))%>%
+    executive_story_editor, 'NA,+|NA,$|,$|,,NA|NA$', ''))%>%
   unite('staff_writer',`show staff writer uncredited`,`staff writer`,sep=',')%>%
   mutate(staff_writer = str_replace_all(staff_writer, 'NA,+|NA,$|,$|,,NA|NA$', ''))%>%
   unite('story_editor', `story editor`,`story editor and`,`story editor as David Bennett Carren`,sep=',')%>%
@@ -310,7 +310,7 @@ crew <- crew_scrape %>%
         `based on the original Star Trek episode The Trouble with Tribbles by`,sep = ',')%>%
   mutate(based_on = str_replace_all(based_on, 'NA,+|NA,$|,$|,,NA|NA$', ''))%>%
   mutate(story_by = str_replace_all(story_by, ',$|,,+', ''))%>%
-  mutate(written_by = str_replace_all(`written by`, ',$|,,+', ''))%>%
+  mutate(written_by = str_replace_all(`written by`, ',$', ''))%>%
   mutate(executive_story_editor = str_replace_all(
     executive_story_editor, ',$|,,+', ''))%>%
   mutate(staff_writer = str_replace_all(staff_writer, ',$|,,+', ''))%>%
@@ -322,18 +322,18 @@ crew <- crew_scrape %>%
 ```
 
 ```{r}
-  crew <- crew %>% 
-  mutate(written_by = strsplit(as.character(written_by), ","))%>%
+  crew2 <- crew %>% 
+  mutate(written_by = str_split(written_by, ","))%>%
   unnest()%>%
-  mutate(story_by = strsplit(as.character(story_by), ","))%>%
+  mutate(story_by = str_split(story_by, ","))%>%
   unnest()%>%  
-  mutate(teleplay_by = strsplit(as.character(teleplay_by), ","))%>%
+  mutate(teleplay_by = str_split(teleplay_by, ","))%>%
   unnest()%>%  
-  mutate(director = strsplit(as.character(director), ","))%>%
+  mutate(director = str_split(director, ","))%>%
   unnest()%>%
-  mutate(showrunner = strsplit(as.character(showrunner), ","))%>%
+  mutate(showrunner = str_split(showrunner, ","))%>%
   unnest()%>%  
-  mutate(executive_story_editor = strsplit(as.character(executive_story_editor), ","))%>%
+  mutate(executive_story_editor = str_split(executive_story_editor, ","))%>%
   unnest()%>%  
   mutate(staff_writer = str_split(staff_writer, ","))%>%
   unnest()%>%  
@@ -342,6 +342,6 @@ crew <- crew_scrape %>%
   mutate(based_on = str_split(based_on, ","))%>%
   unnest()
 
-spew <- tbg %>% select(tconst,demo_adj) %>% right_join(crew,by='tconst')%>% select(-tconst)
+spew <- tbg %>% select(tconst,demo_adj) %>% right_join(crew2,by='tconst')%>% select(-tconst)
 ```
 
