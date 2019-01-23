@@ -284,23 +284,59 @@ for(ep in tbg0$tconst){
 ```
 
 ```{r}
-crew <- crew_scrape %>% 
+story_By <- crew_scrape %>% 
   unite('story_by',`story by`,`story uncredited`,story,uncredited,
         `television story`,`television story and`,`story concept uncredited`,
         `story source uncredited`, sep = ',') %>%
+  select(story_by)%>%
   mutate(story_by = str_replace_all(story_by, 'NA,+|NA,$|,$|,,NA|NA$', ''))%>%
+  mutate(story_by = str_split(story_by, ","))%>%
+  unnest()%>%
+  to_dummy(var.name = 'story_by',suffix='label')
+teleplay_By <- crew_scrape %>% 
   unite('teleplay_by' , `teleplay by`,`rewrite uncredited`,sep=',')%>%
+  select(teleplay_by)%>%
   mutate(teleplay_by = str_replace_all(teleplay_by, 'NA,+|NA,$|,$|,,NA|NA$', ''))%>%
+  mutate(teleplay_by = str_split(teleplay_by, ","))%>%
+  unnest()%>%
+  to_dummy(var.name = 'teleplay_by',suffix='label')
+
+e_se<- crew_scrape%>%
   unite('executive_story_editor', `executive story consultant`,
         `executive story editor uncredited`,`executive story editor`,
         `executive story editor and`,`executive story editor as Mike Sussman`,
         sep = ',')%>%
-  mutate(executive_story_editor = str_replace_all(
-    executive_story_editor, 'NA,+|NA,$|,$|,,NA|NA$', ''))%>%
+   select(executive_story_editor)%>%
+  mutate(executive_story_editor = str_replace_all(executive_story_editor, 'NA,+|NA,$|,$|,,NA|NA$', ''))%>%
+  mutate(executive_story_editor = str_split(executive_story_editor, ","))%>%
+  unnest()%>%
+  to_dummy(var.name = 'executive_story_editor',suffix='label')
+
+written_By <- crew_scrape %>% 
+  mutate(written_by = str_replace_all(`written by`, 'NA,+|NA,$|,$|,,NA|NA$', ''))%>%
+  mutate(written_by = str_split(written_by, ","))%>%
+  select(written_by)%>%
+  unnest()%>%
+  to_dummy(var.name = 'written_by',suffix='label')
+
+staff_Writer <- crew_scrape %>% 
   unite('staff_writer',`show staff writer uncredited`,`staff writer`,sep=',')%>%
+  select(staff_writer)%>%
   mutate(staff_writer = str_replace_all(staff_writer, 'NA,+|NA,$|,$|,,NA|NA$', ''))%>%
-  unite('story_editor', `story editor`,`story editor and`,`story editor as David Bennett Carren`,sep=',')%>%
+  mutate(staff_writer = str_split(staff_writer, ","))%>%
+  unnest()%>%
+  to_dummy(var.name = 'staff_writer',suffix='label')
+
+story_Editor <- crew_scrape %>%
+  unite('story_editor', `story editor`,`story editor and`,
+      `story editor as David Bennett Carren`,sep=',')%>%
+  select(story_editor)%>%
   mutate(story_editor = str_replace_all(story_editor, 'NA,+|NA,$|,$|,,NA|NA$', ''))%>%
+  mutate(story_editor = str_split(story_editor, ","))%>%
+  unnest()%>%
+  to_dummy(var.name = 'story_editor',suffix='label')
+
+based_On <- crew_scrape %>%
   unite('based_on',`based upon certain characters uncredited`,
         `based in part on a premise by`,`based upon material by`,
         `based upon material by as Anatonia Napoli`,
@@ -308,23 +344,27 @@ crew <- crew_scrape %>%
         `Sherlock Holmes characters created by as A Conan Doyle`,
         `based upon Star Trek created by`,`based on material by`,
         `based on the original Star Trek episode The Trouble with Tribbles by`,sep = ',')%>%
+ select(based_on)%>%
   mutate(based_on = str_replace_all(based_on, 'NA,+|NA,$|,$|,,NA|NA$', ''))%>%
-  mutate(story_by = str_replace_all(story_by, ',$|,,+', ''))%>%
-  mutate(written_by = str_replace_all(`written by`, ',$', ''))%>%
-  mutate(executive_story_editor = str_replace_all(
-    executive_story_editor, ',$|,,+', ''))%>%
-  mutate(staff_writer = str_replace_all(staff_writer, ',$|,,+', ''))%>%
-  mutate(story_editor = str_replace_all(story_editor, ',$|,,+', ''))%>%
-  mutate(based_on = str_replace_all(based_on, ',$|,,+', ''))%>%
-  mutate(created_by = `created by`)%>%
-  select(-`written by`,-`created by`)%>%
+  mutate(based_on = str_split(based_on, ","))%>%
+  unnest()%>%
+  to_dummy(var.name = 'based_on',suffix='label')
+
+created_By <- crew_scrape %>%
+  mutate(created_by = str_replace_all(created_by, 'NA,+|NA,$|,$|,,NA|NA$', ''))%>%
+  mutate(created_by = str_split(created_by, ","))%>%
+  unnest()%>%
+  to_dummy(var.name = 'created_by',suffix='label')
   mutate(showrunner = str_replace_all(showrunner, ',$|,,+', ''))
+
+
 ```
 
 ```{r}
-  crew2 <- crew %>% 
+  written_by <- crew$written_by %>% 
   mutate(written_by = str_split(written_by, ","))%>%
   unnest()%>%
+  to_dummy(var.name = 'written',suffix='label')
   mutate(story_by = str_split(story_by, ","))%>%
   unnest()%>%  
   mutate(teleplay_by = str_split(teleplay_by, ","))%>%
