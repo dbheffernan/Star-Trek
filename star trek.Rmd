@@ -284,57 +284,128 @@ for(ep in tbg0$tconst){
 ```
 
 ```{r}
+library(fastDummies)
 story_By <- crew_scrape %>% 
   unite('story_by',`story by`,`story uncredited`,story,uncredited,
         `television story`,`television story and`,`story concept uncredited`,
         `story source uncredited`, sep = ',') %>%
-  select(story_by)%>%
+  select(story_by,tconst)%>%
   mutate(story_by = str_replace_all(story_by, 'NA,+|NA,$|,$|,,NA|NA$', ''))%>%
   mutate(story_by = str_split(story_by, ","))%>%
   unnest()%>%
-  to_dummy(var.name = 'story_by',suffix='label')
+  dummy_cols(select_columns = "story_by", remove_first_dummy = TRUE)%>%
+  select(-story_by)
+
+story <- tibble()
+for(ep in story_By$tconst){
+  df <- story_By %>% filter(tconst == ep)%>%
+    smoosh(ep)
+  story<- bind_rows(story,df)
+}
+```
+
+```{r}
+smoosh <- function(df,tcanst){
+
+df<- df %>% 
+  select(-tconst) %>% 
+  summarise_all(funs(sum))%>%
+  mutate(tconst = tcanst)
+return(df)
+}
+```
+
+
+```{r}
 teleplay_By <- crew_scrape %>% 
   unite('teleplay_by' , `teleplay by`,`rewrite uncredited`,sep=',')%>%
-  select(teleplay_by)%>%
+  select(teleplay_by,tconst)%>%
   mutate(teleplay_by = str_replace_all(teleplay_by, 'NA,+|NA,$|,$|,,NA|NA$', ''))%>%
   mutate(teleplay_by = str_split(teleplay_by, ","))%>%
   unnest()%>%
-  to_dummy(var.name = 'teleplay_by',suffix='label')
+  dummy_cols(select_columns = "teleplay_by", remove_first_dummy = TRUE)%>%
+  select(-teleplay_by)
 
+tele <- tibble()
+for(ep in teleplay_By$tconst){
+  df <- teleplay_By %>% filter(tconst == ep)%>%
+    smoosh(ep)
+  tele<- bind_rows(tele,df)
+}
+teleplay_By <- tele %>% distinct()
+```
+
+```{r}
 e_se<- crew_scrape%>%
   unite('executive_story_editor', `executive story consultant`,
         `executive story editor uncredited`,`executive story editor`,
         `executive story editor and`,`executive story editor as Mike Sussman`,
         sep = ',')%>%
-   select(executive_story_editor)%>%
+   select(executive_story_editor,tconst)%>%
   mutate(executive_story_editor = str_replace_all(executive_story_editor, 'NA,+|NA,$|,$|,,NA|NA$', ''))%>%
   mutate(executive_story_editor = str_split(executive_story_editor, ","))%>%
   unnest()%>%
-  to_dummy(var.name = 'executive_story_editor',suffix='label')
+  dummy_cols(select_columns = "executive_story_editor", remove_first_dummy = TRUE)%>%
+  select(-executive_story_editor)
+
+es <- tibble()
+for(ep in e_se$tconst){
+  df <- e_se %>% filter(tconst == ep)%>%
+    smoosh(ep)
+  es<- bind_rows(es,df)
+}
+e_se <- es %>% distinct()
 
 written_By <- crew_scrape %>% 
   mutate(written_by = str_replace_all(`written by`, 'NA,+|NA,$|,$|,,NA|NA$', ''))%>%
   mutate(written_by = str_split(written_by, ","))%>%
-  select(written_by)%>%
+  select(written_by,tconst)%>%
   unnest()%>%
-  to_dummy(var.name = 'written_by',suffix='label')
+  dummy_cols(select_columns = "written_by", remove_first_dummy = TRUE)%>%
+  select(-written_by)
+
+writ <- tibble()
+for(ep in written_By$tconst){
+  df <- written_By %>% filter(tconst == ep)%>%
+    smoosh(ep)
+  writ<- bind_rows(writ,df)
+}
+written_By <- writ %>% distinct()
 
 staff_Writer <- crew_scrape %>% 
   unite('staff_writer',`show staff writer uncredited`,`staff writer`,sep=',')%>%
-  select(staff_writer)%>%
+  select(staff_writer,tconst)%>%
   mutate(staff_writer = str_replace_all(staff_writer, 'NA,+|NA,$|,$|,,NA|NA$', ''))%>%
   mutate(staff_writer = str_split(staff_writer, ","))%>%
   unnest()%>%
-  to_dummy(var.name = 'staff_writer',suffix='label')
+  dummy_cols(select_columns = "staff_writer", remove_first_dummy = TRUE)%>%
+  select(-staff_writer)
+
+swrit <- tibble()
+for(ep in staff_Writer$tconst){
+  df <- staff_Writer %>% filter(tconst == ep)%>%
+    smoosh(ep)
+  swrit<- bind_rows(swrit,df)
+}
+staff_Writer <- swrit %>% distinct()
 
 story_Editor <- crew_scrape %>%
   unite('story_editor', `story editor`,`story editor and`,
       `story editor as David Bennett Carren`,sep=',')%>%
-  select(story_editor)%>%
+  select(story_editor,tconst)%>%
   mutate(story_editor = str_replace_all(story_editor, 'NA,+|NA,$|,$|,,NA|NA$', ''))%>%
   mutate(story_editor = str_split(story_editor, ","))%>%
   unnest()%>%
-  to_dummy(var.name = 'story_editor',suffix='label')
+  dummy_cols(select_columns = "story_editor", remove_first_dummy = TRUE)%>%
+  select(-story_editor)
+
+se <- tibble()
+for(ep in story_Editor$tconst){
+  df <- story_Editor %>% filter(tconst == ep)%>%
+    smoosh(ep)
+  se<- bind_rows(se,df)
+}
+story_Editor <- se %>% distinct()
 
 based_On <- crew_scrape %>%
   unite('based_on',`based upon certain characters uncredited`,
@@ -344,20 +415,71 @@ based_On <- crew_scrape %>%
         `Sherlock Holmes characters created by as A Conan Doyle`,
         `based upon Star Trek created by`,`based on material by`,
         `based on the original Star Trek episode The Trouble with Tribbles by`,sep = ',')%>%
- select(based_on)%>%
+ select(based_on,tconst)%>%
   mutate(based_on = str_replace_all(based_on, 'NA,+|NA,$|,$|,,NA|NA$', ''))%>%
   mutate(based_on = str_split(based_on, ","))%>%
   unnest()%>%
-  to_dummy(var.name = 'based_on',suffix='label')
+  dummy_cols(select_columns = "based_on", remove_first_dummy = TRUE)%>%
+  select(-based_on)
 
+bo <- tibble()
+for(ep in based_On$tconst){
+  df <- based_On %>% filter(tconst == ep)%>%
+    smoosh(ep)
+  bo<- bind_rows(bo,df)
+}
+based_On <- bo %>% distinct()
+```
+
+```{r}
 created_By <- crew_scrape %>%
-  mutate(created_by = str_replace_all(created_by, 'NA,+|NA,$|,$|,,NA|NA$', ''))%>%
+  mutate(created_by = str_replace_all(`created by`, 'NA,+|NA,$|,$|,,NA|NA$', ''))%>%
+  select(created_by,tconst)%>%
   mutate(created_by = str_split(created_by, ","))%>%
   unnest()%>%
-  to_dummy(var.name = 'created_by',suffix='label')
-  mutate(showrunner = str_replace_all(showrunner, ',$|,,+', ''))
+  dummy_cols(select_columns = "created_by", remove_first_dummy = TRUE)%>%
+  select(-created_by)
+
+cb <- tibble()
+for(ep in created_By$tconst){
+  df <- created_By %>% filter(tconst == ep)%>%
+    smoosh(ep)
+  cb<- bind_rows(cb,df)
+}
+created_By <- bo %>% distinct()
+```
+
+```{r}
+showRunner <- crew_scrape %>%
+  mutate(showrunner = str_replace_all(showrunner, ',$|,,+', ''))%>%
+  mutate(showrunner = str_split(showrunner, ","))%>%
+  select(showrunner,tconst)%>%
+  unnest()%>%
+  dummy_cols(select_columns = "showrunner", remove_first_dummy = TRUE)%>%
+  select(-showrunner)
+
+sr <- tibble()
+for(ep in showRunner$tconst){
+  df <- showRunner %>% filter(tconst == ep)%>%
+    smoosh(ep)
+  sr<- bind_rows(sr,df)
+}
+showRunner <- sr %>% distinct()
 
 
+final_crew <- left_join(written_By,teleplay_By,by='tconst')%>%
+  left_join(story_By,by='tconst')%>%
+  left_join(e_se,by='tconst')%>%
+  left_join(staff_Writer,by='tconst')%>%
+  left_join(story_Editor,by='tconst')%>%
+  left_join(based_On,by='tconst')%>%
+  left_join(created_By,by='tconst')%>%
+  left_join(showRunner,by='tconst')
+
+final_crew <- tbg %>% 
+  select(tconst,demo_adj) %>% 
+  right_join(final_crew,by='tconst') %>% 
+  select(-tconst)
 ```
 
 ```{r}
