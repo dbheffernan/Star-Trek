@@ -6,7 +6,8 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE,results = 'asis', fig.align = 'center')
+options(warn = -1)
 ```
 
 ## R Markdown
@@ -31,9 +32,44 @@ episodes <- read_tsv("C:\\Users\\Dillon\\Desktop\\episodes.tsv")
 shows <- show_names %>% left_join(episodes, by='parentTconst') %>% left_join(rate,by='tconst')
 ```
 
-## Including Plots
+#Demographics
+"I'll never get used to seeing a woman on the bridge." -Captain Christopher Pike. Star Trek: Season 1,episode 0 (1966)
 
-You can also embed plots, for example:
+Perhaps the biggest obstacle to using IMDB to understand Star Trek fandom is that IMDB users and Star Trek fans are signifigantly different.  Now, IMDB actually breaks down ratings by sex and age, meaning, in theory, we could adjust the ratings to match the demographics of the larger Trekkie community.  However, going down this path we quickly run into the highly contentious issue of who exactly counts as a fan?  With over a dozen1 projects rumored to be in development as of early 2019, franchise owner National Amusements no doubt has extensive proprietary research into exactly who constitues a Trekkie.  While the information is not availible to the general public, we can get a decent sense from availible data.
+
+##Gender
+To be blunt, the classic image of the male science fiction nerd is not accurate based on all availible data.  Surveys indicate the science fiction/fantasy fandom community is at least (Eventbrite2) 49% of are female, with more rigorus academic works citing higher numbers of 54.5 (Menadue and Jacups) or 57 (Frazetti).  Frazetti in particular is noteworthy, as his survey was explicity of star trek fans.  Less rigours Facebooks surveys conducted by the author and Shencker both indicate aproximetly 1/3 of the fandom is female.  Finally, while not quantifiable, we should consider signaling from the franchise owners.  Large sci-fi properties such as Star Trek and Star Wars are expensive to produce and owned by very large highly profitable media companies.  If the classical image of the mal-adjusted male nerd were accurate portrayal of those companies target audiences, it is reasonable to assume they would not be spending lavish amounts of money to create properties featuring non-sexulized female leads and complex female friendships.  Based on the availible data, it is reasonable to conclude that, like the population at large, about half of trekkies are female.
+
+While not directly applicable to our purposes as IMDB only breaks down ratings demographics into male and female, surveys indicate that 1.1 (Menadue and Jacups), 2(Eventbrite), and 1.9 (Heffernan) percent of fandom identifies as some form of non-binary gender.  While surveys vary considerably, this is in all likelihood signifigantly higher than the population at large, estimated in a 2017 meta-survey by Meerwijk and Sevelius as aproximetly .4%.
+
+(HOW GENDER OF SAMPLE COMPARES)
+##Age
+Age is decidedly trickier to nail down.  Before we begin it should be noted that IMDB breaks their age demographics into the groups under 18,18-29,30-44,45+.  Under 18 tends to have very low numbers of people and will be dropped for our purposes.  Rigorus studies show an aproximate breakdown of 1/3 in each of the 3 catagories lised abobe.  Specifically,  Frazetti (32,31,37), Menadue and Jacups (20,37,42).  The less rigorus surveys such Heffernan and Shencker both indicate a somewhat younger audience, with the 45+ group being the least numerous.  A key unexplored factor is how the dates the surveys were collected.  One could imagine surveys conducted in the period after Enterprise went off the air, but before the Kelvinverse movies were released having a signifigantly older skew. 
+
+##What this means
+Ultimetly, we are looking at 6 demographic catagories, which could roughly be described as men/women who came of age before TNG, during the run of TNG, DS9 or VOY, and after Voyager.  Based on availible evidence I am comfortable giving these 6 groups equal weight in our model.  The data indicates that in all liklihood the percentages are something close to that.
+
+#Shape of Data
+#Insights
+#1: TNG is way worse than you remember
+Our dataset includes ratings for both the overall series, as well as indivdual episode.  Presumably, people only form their opinion of the the overall series after viewing each episode and carefully considering the entire run holistically.
+
+```{r}
+library(knitr)
+library(digest)
+library(tidyverse)
+series <- tbg%>%group_by(series_name)%>%summarise(IMDB_Series_Average = mean(series_avg))%>%arrange(desc(IMDB_Series_Average))
+kable(series)
+
+```
+
+Of course, most people probably don't make a carefully considered decision after watching each episode.  Rather, the series rating could be more accurately considered a measure of fan's senitment for the series.  Indeed, the above lists probably more or less matches what one would guess the rankings are after viewing the general discourse on the internet.  If we look at the series on a per episode basis, we get a very different picture.
+
+```{r}
+ 
+kable(tbg%>%group_by(series_name)%>%summarise(IMDB_Episode_Average = mean(demo_adj),mean_standard_dev = sd(demo_adj))%>%arrange(desc(IMDB_Episode_Average)))
+```
+
 
 ```{r pressure, echo=FALSE}
 library(rvest)
@@ -481,29 +517,5 @@ final_crew <- tbg %>%
   right_join(final_crew,by='tconst') %>% 
   select(-tconst)
 ```
-
-```{r}
-  written_by <- crew$written_by %>% 
-  mutate(written_by = str_split(written_by, ","))%>%
-  unnest()%>%
-  to_dummy(var.name = 'written',suffix='label')
-  mutate(story_by = str_split(story_by, ","))%>%
-  unnest()%>%  
-  mutate(teleplay_by = str_split(teleplay_by, ","))%>%
-  unnest()%>%  
-  mutate(director = str_split(director, ","))%>%
-  unnest()%>%
-  mutate(showrunner = str_split(showrunner, ","))%>%
-  unnest()%>%  
-  mutate(executive_story_editor = str_split(executive_story_editor, ","))%>%
-  unnest()%>%  
-  mutate(staff_writer = str_split(staff_writer, ","))%>%
-  unnest()%>%  
-  mutate(story_editor = str_split(story_editor, ","))%>%
-  unnest()%>%  
-  mutate(based_on = str_split(based_on, ","))%>%
-  unnest()
-
-spew <- tbg %>% select(tconst,demo_adj) %>% right_join(crew2,by='tconst')%>% select(-tconst)
-```
-
+1: https://screenrant.com/star-trek-projects-currently-development-movies-shows/
+2: https://icv2.com/articles/columns/view/31899/new-eventbrite-survey-reveals-convention-demographics-spending-patterns
