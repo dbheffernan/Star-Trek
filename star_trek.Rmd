@@ -70,22 +70,10 @@ Of course, most people probably don't make a carefully considered decision after
 kable(tbg%>%group_by(series_name)%>%summarise(IMDB_Episode_Average = mean(demo_adj),mean_standard_dev = sd(demo_adj))%>%arrange(desc(IMDB_Episode_Average)))
 ```
 
-This is not terribly surprising if one is familiar with some of the dregs of TNG.  For every classic and rightly celebrated episode such as "The Best of Both Worls", "The Inner Light", "The Measure of a Man" or "Yesterday's Enerprise" there is a "Angel One" (Feminist Police State Planet), "Code of Honor" (Offensive African Sterotype Planet), "Sub Rosa" (Crusher Has Sex With a Ghost), or "Shades of Grey" (We Ran Out of Money and Need to Make the Season Finale a Clip Show).  It should be noted that these episodes are spread out over the series, as we can see in this graph of average ratings for each season.
-
-```{r}
-seasons <- tbg %>% group_by(series_name,seasonNumber) %>% summarise(season_mean = mean(demo_adj))
-z <- ggplot(data=seasons, aes(x=seasonNumber, y=season_mean, group=series_name,colour = factor(series_name))) +
-  geom_line()+
-  geom_point()
-```
-
-Clearly we say an improvement in TNG starting around the third season, but even then the quality is not stand out compared to the other shows from the 90s.  Furthermore, we see a rather percipitous drop in quality in the final season, most likely caused by a lot of the creative team leaving for other shows (explored below).
-
-We can actually
 
 ```{r pressure, echo=FALSE}
 library(rvest)
-rating_scraper <- function(tconst)
+rating_scraper <- function(tconst){
 ep_name = '//*[(@id = "main")]//h3//a'
 ep_year = '///h3//*[contains(concat( " ", @class, " " ), concat( " ", "nobr", " " ))]'
 gen_ratings <- '//*[contains(concat( " ", @class, " " ), concat( " ", "leftAligned", " " ))]'
