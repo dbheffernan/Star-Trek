@@ -74,12 +74,84 @@ This is not terribly surprising if one is familiar with some of the dregs of TNG
 
 ```{r}
 seasons <- tbg %>% group_by(series_name,seasonNumber) %>% summarise(season_mean = mean(demo_adj))
-z <- ggplot(data=seasons, aes(x=seasonNumber, y=season_mean, group=series_name,colour = factor(series_name))) +
+ggplot(data=seasons, aes(x=seasonNumber, y=season_mean, group=series_name,colour = factor(series_name))) +
   geom_line()+
   geom_point()
 ```
 
 Clearly we say an improvement in TNG starting around the third season, but even then the quality is not stand out compared to the other shows from the 90s.  Furthermore, we see a rather percipitous drop in quality in the final season, most likely caused by a lot of the creative team leaving for other shows (explored below).
+```{r}
+ttests <-
+  data_frame(
+    series_a = c("TOS","TOS","TOS","TOS","TOS","TOS",
+                 "TNG","TNG","TNG","TNG","TNG","TNG",
+                 "DS9","DS9","DS9","DS9","DS9","DS9",
+                 "VOY","VOY","VOY","VOY","VOY","VOY",
+                 "ENT","ENT","ENT","ENT","ENT","ENT",
+                 "DSC","DSC","DSC","DSC","DSC","DSC"),
+    series_b = c("TOS","TNG","DS9","VOY","ENT","DSC",
+                 "TOS","TNG","DS9","VOY","ENT","DSC",
+                 "TOS","TNG","DS9","VOY","ENT","DSC",
+                 "TOS","TNG","DS9","VOY","ENT","DSC",
+                 "TOS","TNG","DS9","VOY","ENT","DSC",
+                 "TOS","TNG","DS9","VOY","ENT","DSC")
+    ,pval = c(t.test(tos$demo_adj,tos$demo_adj,alternative = "greater")$p.value,
+               t.test(tos$demo_adj,tng$demo_adj,alternative = "greater")$p.value,
+               t.test(tos$demo_adj,ds9$demo_adj,alternative = "greater")$p.value,
+               t.test(tos$demo_adj,voy$demo_adj,alternative = "greater")$p.value,
+               t.test(tos$demo_adj,ent$demo_adj,alternative = "greater")$p.value,
+               t.test(tos$demo_adj,dsc$demo_adj,alternative = "greater")$p.value,
+               t.test(tng$demo_adj,tos$demo_adj,alternative = "greater")$p.value,
+               t.test(tng$demo_adj,tng$demo_adj,alternative = "greater")$p.value,
+               t.test(tng$demo_adj,ds9$demo_adj,alternative = "greater")$p.value,
+               t.test(tng$demo_adj,voy$demo_adj,alternative = "greater")$p.value,
+               t.test(tng$demo_adj,ent$demo_adj,alternative = "greater")$p.value,
+               t.test(tng$demo_adj,dsc$demo_adj,alternative = "greater")$p.value,
+               t.test(ds9$demo_adj,tos$demo_adj,alternative = "greater")$p.value,
+               t.test(ds9$demo_adj,tng$demo_adj,alternative = "greater")$p.value,
+               t.test(ds9$demo_adj,ds9$demo_adj,alternative = "greater")$p.value,
+               t.test(ds9$demo_adj,voy$demo_adj,alternative = "greater")$p.value,
+               t.test(ds9$demo_adj,ent$demo_adj,alternative = "greater")$p.value,
+               t.test(ds9$demo_adj,dsc$demo_adj,alternative = "greater")$p.value,
+               t.test(voy$demo_adj,tos$demo_adj,alternative = "greater")$p.value,
+               t.test(voy$demo_adj,tng$demo_adj,alternative = "greater")$p.value,
+               t.test(voy$demo_adj,ds9$demo_adj,alternative = "greater")$p.value,
+               t.test(voy$demo_adj,voy$demo_adj,alternative = "greater")$p.value,
+               t.test(voy$demo_adj,ent$demo_adj,alternative = "greater")$p.value,
+               t.test(voy$demo_adj,dsc$demo_adj,alternative = "greater")$p.value,
+               t.test(ent$demo_adj,tos$demo_adj,alternative = "greater")$p.value,
+               t.test(ent$demo_adj,tng$demo_adj,alternative = "greater")$p.value,
+               t.test(ent$demo_adj,ds9$demo_adj,alternative = "greater")$p.value,
+               t.test(ent$demo_adj,voy$demo_adj,alternative = "greater")$p.value,
+               t.test(ent$demo_adj,ent$demo_adj,alternative = "greater")$p.value,
+               t.test(ent$demo_adj,dsc$demo_adj,alternative = "greater")$p.value,
+               t.test(dsc$demo_adj,tos$demo_adj,alternative = "greater")$p.value,
+               t.test(dsc$demo_adj,tng$demo_adj,alternative = "greater")$p.value,
+               t.test(dsc$demo_adj,ds9$demo_adj,alternative = "greater")$p.value,
+               t.test(dsc$demo_adj,voy$demo_adj,alternative = "greater")$p.value,
+               t.test(dsc$demo_adj,ent$demo_adj,alternative = "greater")$p.value,
+               t.test(dsc$demo_adj,dsc$demo_adj,alternative = "greater")$p.value)
+  )
+```
+
+```{r}
+ttests %>%
+  ggplot(aes(x = series_a
+             , y = series_b
+             , fill = pval)) +
+   geom_raster() +
+  geom_text(aes(label = round(pval,digits=2))) +
+  scale_fill_distiller(palette = "Spectral"
+                       , limits = c(0,1)) +
+  theme_minimal()+
+  theme(panel.grid = element_blank())
+```
+
+
+```{r}
+pairwise.ttest <- pairwise.t.test(x = tbg$demo_adj, g = tbg$series_name,pool.sd = FALSE)
+test <- tbl_df(pairwise.ttest$p.value)
+```
 
 We can actually
 
