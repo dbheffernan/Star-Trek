@@ -67,16 +67,49 @@ Of course, most people probably don't make a carefully considered decision after
 
 ```{r}
  
-kable(tbg%>%group_by(series_name)%>%summarise(IMDB_Episode_Average = mean(demo_adj),mean_standard_dev = sd(demo_adj))%>%arrange(desc(IMDB_Episode_Average)))
+kable(tbg%>%
+        group_by(series_name)%>%
+        summarise(mean = mean(demo_adj),
+                  sd = sd(demo_adj),
+                  skew=skewness(demo_adj))
+      %>%arrange(desc(mean)))
 ```
 
 This is not terribly surprising if one is familiar with some of the dregs of TNG.  For every classic and rightly celebrated episode such as "The Best of Both Worls", "The Inner Light", "The Measure of a Man" or "Yesterday's Enerprise" there is a "Angel One" (Feminist Police State Planet), "Code of Honor" (Offensive African Sterotype Planet), "Sub Rosa" (Crusher Has Sex With a Ghost), or "Shades of Grey" (We Ran Out of Money and Need to Make the Season Finale a Clip Show).  It should be noted that these episodes are spread out over the series, as we can see in this graph of average ratings for each season.
-
+,e
 ```{r}
-seasons <- tbg %>% group_by(series_name,seasonNumber) %>% summarise(season_mean = mean(demo_adj))
-ggplot(data=seasons, aes(x=seasonNumber, y=season_mean, group=series_name,colour = factor(series_name))) +
+seasons <- tbg %>% 
+  group_by(series_name,seasonNumber) %>% 
+  summarise(IMDB_season_mean = mean(demo_adj),
+            sd=sd(demo_adj))
+p<-ggplot(data=seasons, 
+          aes(x=seasonNumber, 
+              y=IMDB_season_mean, 
+              group=series_name,
+              colour = factor(series_name))) +
   geom_line()+
   geom_point()
+
+target <- c('Star Trek: The Next Generation','Star Trek: Voyager')
+
+seasonst <- tbg%>% 
+  filter(series_name %in% target) %>%   
+  group_by(series_name,seasonNumber) %>% 
+  summarise(IMDB_season_mean = mean(demo_adj),sd=sd(demo_adj))
+pp<-ggplot(data=seasons, 
+           aes(x=seasonNumber, 
+               y=IMDB_season_mean, 
+               group=series_name,
+               colour = factor(series_name))) +
+  geom_line()+
+  geom_point()+
+  geom_ribbon(aes(ymin = IMDB_season_mean - (sd), 
+                  ymax = IMDB_season_mean+(sd),
+                  fill=series_name,
+                  colour = factor(series_name)))
+
+p
+pp
 ```
 
 Clearly we say an improvement in TNG starting around the third season, but even then the quality is not stand out compared to the other shows from the 90s.  Furthermore, we see a rather percipitous drop in quality in the final season, most likely caused by a lot of the creative team leaving for other shows (explored below).
@@ -134,30 +167,42 @@ ttests <-
   )
 ```
 
-```{r}
-ttests %>%
-  ggplot(aes(x = series_a
-             , y = series_b
-             , fill = pval)) +
-   geom_raster() +
-  geom_text(aes(label = round(pval,digits=2))) +
-  scale_fill_distiller(palette = "Spectral"
-                       , limits = c(0,1)) +
-  theme_minimal()+
-  theme(panel.grid = element_blank())
-```
 
+We can actually compare the shows in a more rigorus way than simply looking at the means, using a statistical test known as "Student's T-Test".  While this is not the place to really get into weeds as to how all this works, essentially the T-Test compares the means of two samples (in our case, Star Trek series) and tells us the likelyhood that difference between those means is "statisically signifigant" or simply the result of random chance.  This liklihood is expressed in the form of a "p-value," essentially the probability that the different between the means is the result of random chance or a true difference between the samples.  If this "p-value" below a certain level, traditionally 0.05 (or a 5% liklihood of being random) we can say it is "statisically signifigant." It should be noted, again for reasons we don't need to get into, that only "low" p-values matter.  For example, with a sufficiently low value we can say the mean of A is *not* higher than the mean of B, but a high value comparing B and C doesn't tell us that B is better than C.  Let's take a look at how this all stacks up when we compare the mean of each show.
 
 ```{r}
-pairwise.ttest <- pairwise.t.test(x = tbg$demo_adj, g = tbg$series_name,pool.sd = FALSE)
-test <- tbl_df(pairwise.ttest$p.value)
+# ttests %>%
+#   ggplot(aes(x = series_a
+#              , y = series_b
+#              , fill = pval)) +
+#    geom_raster() +
+#   geom_text(aes(label = round(pval,digits=2))) +
+#   scale_fill_distiller(palette = "Spectral"
+#                        , limits = c(0,1)) +
+#   theme_minimal()+
+#   theme(panel.grid = element_blank())
+
+ttests %>% 
+     arrange(series_b) %>%
+     group_by(series_a) %>%
+     filter(row_number() != which(series_a == series_b)) %>%
+    ggplot(aes(x=series_a, y=series_b, fill=pval)) +
+    geom_tile() +
+   geom_text(aes(label = round(pval,digits=2))) +
+    scale_fill_distiller(palette = "Spectral"
+                        , limits = c(0,1)) +
+    theme(axis.text.x = element_text(angle=90, hjust=TRUE)) +
+    xlab("is better than this one") + 
+    ylab("probabily this show")
 ```
 
-We can actually
+As we can see, TNG's p-values are suffciently low that we can "reject the hypothsis" that it has a higher mean episode than any other series, and VOY's fall into that range when compared to DSC, ENT, and DS9.  In English, we can say the average episode of TNG is almost certainly worse than every other series, and the average episode of Voyager is worse than the three listed above.
+
+
 
 ```{r pressure, echo=FALSE}
 library(rvest)
-rating_scraper <- function(tconst)
+rating_scraper <- function(tconst){
 ep_name = '//*[(@id = "main")]//h3//a'
 ep_year = '///h3//*[contains(concat( " ", @class, " " ), concat( " ", "nobr", " " ))]'
 gen_ratings <- '//*[contains(concat( " ", @class, " " ), concat( " ", "leftAligned", " " ))]'
@@ -375,14 +420,14 @@ voy_2 <- voy %>%
    select(-tconst,-name,-year,-series_name,-seasonNumber,-episodeNumber,
           -demo_adj,-numVotes,-series_avg,-two)
 
-tos_mod <- lm(demo_adj ~ . ,tos_)
-tng_mod <- lm(demo_adj ~ . ,tng_)
-ds9_mod <- lm(demo_adj ~ . ,ds9_)
-voy_mod <- lm(demo_adj ~ . ,voy_)
-ent_mod <- lm(demo_adj ~ . ,ent_)
+# tos_mod <- tidy(lm(demo_adj ~ . ,tos_))
+# tng_mod <-  tidy(lm(demo_adj ~ . ,tng_))
+# ds9_mod <-  tidy(lm(demo_adj ~ . ,ds9_))
+# voy_mod <-  tidy(lm(demo_adj ~ . ,voy_))
+# ent_mod <-  tidy(lm(demo_adj ~ . ,ent_))
 
 test <- bind_rows(tos_,tng_,ds9_,voy_,ent_) %>% replace(is.na(.), 0)
-alllm <- lm(demo_adj ~ ., test)
+alllm <- tidy(lm(demo_adj ~ ., test)) %>% filter(p.value < 0.05)
 ```
 
 
@@ -404,6 +449,18 @@ for(ep in tbg0$tconst){
 ```
 
 ```{r}
+smoosh <- function(df,tcanst){
+
+df<- df %>% 
+  select(-tconst) %>% 
+  summarise_all(funs(sum))%>%
+  mutate(tconst = tcanst)
+return(df)
+}
+```
+
+
+```{r}
 library(fastDummies)
 story_By <- crew_scrape %>% 
   unite('story_by',`story by`,`story uncredited`,story,uncredited,
@@ -422,21 +479,7 @@ for(ep in story_By$tconst){
     smoosh(ep)
   story<- bind_rows(story,df)
 }
-```
 
-```{r}
-smoosh <- function(df,tcanst){
-
-df<- df %>% 
-  select(-tconst) %>% 
-  summarise_all(funs(sum))%>%
-  mutate(tconst = tcanst)
-return(df)
-}
-```
-
-
-```{r}
 teleplay_By <- crew_scrape %>% 
   unite('teleplay_by' , `teleplay by`,`rewrite uncredited`,sep=',')%>%
   select(teleplay_by,tconst)%>%
@@ -451,11 +494,10 @@ for(ep in teleplay_By$tconst){
   df <- teleplay_By %>% filter(tconst == ep)%>%
     smoosh(ep)
   tele<- bind_rows(tele,df)
+
 }
 teleplay_By <- tele %>% distinct()
-```
 
-```{r}
 e_se<- crew_scrape%>%
   unite('executive_story_editor', `executive story consultant`,
         `executive story editor uncredited`,`executive story editor`,
@@ -549,9 +591,7 @@ for(ep in based_On$tconst){
   bo<- bind_rows(bo,df)
 }
 based_On <- bo %>% distinct()
-```
 
-```{r}
 created_By <- crew_scrape %>%
   mutate(created_by = str_replace_all(`created by`, 'NA,+|NA,$|,$|,,NA|NA$', ''))%>%
   select(created_by,tconst)%>%
@@ -567,9 +607,7 @@ for(ep in created_By$tconst){
   cb<- bind_rows(cb,df)
 }
 created_By <- bo %>% distinct()
-```
 
-```{r}
 showRunner <- crew_scrape %>%
   mutate(showrunner = str_replace_all(showrunner, ',$|,,+', ''))%>%
   mutate(showrunner = str_split(showrunner, ","))%>%
@@ -601,5 +639,157 @@ final_crew <- tbg %>%
   right_join(final_crew,by='tconst') %>% 
   select(-tconst)
 ```
+
+```{r}
+crew_mod <- lm(demo_adj ~ .,final_crew)
+tidy_crew <- tidy(crew_mod) %>% filter(p.value < .01)
+```
+
+#2: Showrunners tend to be good writers
+
+Next, we shift from the Star Trek series to the people that worked on them.  Particularly for the 90s era shows, many of the crew members would work on multiple shows.  Perhaps while there might not be a huge difference between overall series quality, but that because breakout stars like Byran Fuller or Naren Shankar worked on multiple series.  Or perhaps real turkies like the fan loathed Brannon Bragga dragged down rankings across multiple series.  Using statistial regresstion on IMDB's crew database can perhaps give us a sense.
+
+Essentially, statisical regresstion in a machine learning algorithm that estimates what the impact of one variable (in our case crew member) is on a second variable (IMDB score).  It does this by looking at the entire dataset and estimating what the impact of one crew memeber's contribution would be were we to hold all other variables constant.  For example, while the directors, story editors and showrunners he worked with varied, the episodes that Michael Piller wrote, such as the "Best of Both Worlds" tended to be pretty good.  When we do this across the entire creative team of the six core shows, we get a decent idea of what the rankings are.  As before, statistical significance is key.  While there are aproximetly 600 people that have worked on the creative team of Trek at some point or another only a handful (21) are standouts at the 95% confidence level.
+
+```{r}
+library(knitr)
+tidy_crew <- tidy_crew %>% arrange(desc(estimate))
+kable(tidy_crew)
+```
+
+```{r}
+library(tidyverse)
+top_tos <- tos_lines %>% summarise_all(funs(sum)) %>% gather() %>% top_n(25)
+top_tng <- tng_lines %>% summarise_all(funs(sum)) %>% gather() %>% top_n(25)
+top_ds9 <- ds9_lines %>% summarise_all(funs(sum)) %>% gather() %>% top_n(25)
+top_voy <- voy_lines %>% summarise_all(funs(sum)) %>% gather() %>% top_n(25)
+top_ent <- ent_lines %>% summarise_all(funs(sum)) %>% gather() %>% top_n(25)
+
+# Set a number of 'empty bar'
+top_tos <- top_tos %>%
+  add_row (key='',value=0)%>%
+  add_row (key='',value=0)%>%
+  add_row (key='',value=0)%>% 
+  mutate(series = 'Star Trek',lines=round(value/1000,1)) 
+top_tng <- top_tng %>%
+  add_row (key='',value=0)%>%
+  add_row (key='',value=0)%>% 
+  add_row (key='',value=0)%>%
+  mutate(series = 'Star Trek: The Next Generation',lines=round(value/1000,1))
+
+top_ds9 <- top_ds9 %>%add_row (key='',value=0)%>%add_row (key='',value=0)%>% add_row (key='',value=0)%>%mutate(series = 'Star Trek: Deep Space Nine',lines=round(value/1000,1))
+top_voy <- top_voy %>%add_row (key='',value=0)%>%add_row (key='',value=0)%>% add_row (key='',value=0)%>%mutate(series = 'Star Trek: Voyager',lines=round(value/1000,1))
+top_ent <- top_ent %>%add_row (key='',value=0)%>%add_row (key='',value=0)%>% add_row (key='',value=0)%>%mutate(series = 'Star Trek: Enterprise',lines=round(value/1000,1))
+
+top_lines <- bind_rows(top_tos,top_tng,top_ds9,top_voy,top_ent) %>% mutate(id = n())
+empty_bar=3
+ 
+# Add lines to the initial dataset
+# to_add = matrix(NA, empty_bar, ncol(top_lines))
+# colnames(to_add) = colnames(top_lines)
+# top_lines=rbind(top_lines, to_add)
+# top_lines = top_lines %>% arrange(series, lines)
+# top_lines$id=seq(1, nrow(top_lines))
+
+to_add = data.frame( matrix(NA, empty_bar*nlevels(top_lines$series), ncol(top_lines)) )
+colnames(to_add) = colnames(top_lines)
+# to_add$series=rep(levels(top_lines$series), each=empty_bar)
+#to_add$series=rep(levels(top_lines$series), each=empty_bar)
+top_lines=rbind(top_lines, to_add)
+top_lines=top_lines %>% arrange(series, lines)
+top_lines$id=seq(1, nrow(top_lines))
+
+
+label_data=top_lines
+number_of_bar=nrow(label_data)
+angle= 90-360 * (label_data$id-0.5) /number_of_bar     # I substract 0.5 because the letter must have the angle of the center of the bars. Not extreme right(1) or extreme 
+label_data$hjust<-ifelse( angle < -90, 1, 0)
+label_data$angle<-ifelse(angle < -90, angle+180, angle)
+
+base_data=top_lines %>% 
+  group_by(series) %>% 
+  summarize(start=min(id), end=max(id) - empty_bar) %>% 
+  rowwise() %>% 
+  mutate(title=mean(c(start, end)))
+ 
+# prepare a data frame for grid (scales)
+grid_data = base_data
+grid_data$end = grid_data$end[ c( nrow(grid_data), 1:nrow(grid_data)-1)] + 1
+grid_data$start = grid_data$start - 1
+grid_data=grid_data[-1,]
+
+
+# ----- ------------------------------------------- ---- #
+
+p = ggplot(top_lines, aes(x=as.factor(id), y=lines, fill=series)) +       # Note that id is a factor. If x is numeric, there is some space between the first bar
+  
+  # This add the bars with a blue color
+  #geom_bar(stat="identity", alpha=0.5)+
+  #geom_bar(aes(x=as.factor(id), y=lines, fill=series), stat="identity", alpha=0.5) +
+  
+  # geom_segment(data=grid_data, aes(x = end, y = 80, xend = start, yend = 80), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
+  # geom_segment(data=grid_data, aes(x = end, y = 60, xend = start, yend = 60), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
+  # geom_segment(data=grid_data, aes(x = end, y = 40, xend = start, yend = 40), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
+  # geom_segment(data=grid_data, aes(x = end, y = 20, xend = start, yend = 20), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
+  # annotate("text", x = rep(max(top_lines$id),4), y = c(20, 40, 60, 80), label = c("20", "40", "60", "80") , color="grey", size=3 , angle=0, fontface="bold", hjust=1) +
+  # Limits of the plot = very important. The negative value controls the size of the inner circle, the positive one is useful to add size over each bar
+   #ylim(-700,1600) +  p + ylim(-600,1300)
+  geom_bar(stat="identity", alpha=0.5) +
+  ylim(-600,1300) +
+  # Custom the theme: no axis title and no cartesian grid
+  theme_minimal() +
+  theme(
+  legend.position = "none",
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    panel.grid = element_blank(),
+    plot.margin = unit(rep(-1,4), "cm")) +    # This remove unnecessary margin around plot
+  
+  #This makes the coordinate polar instead of cartesian.
+  coord_polar()+
+  # geom_text(data=label_data, 
+  #           aes(x=id, 
+  #               y=value+10, 
+  #               label=key, 
+  #               hjust=hjust), 
+  #           color="black",
+  #           fontface="bold",
+  #           alpha=0.6, 
+  #           size=2.5, 
+  #           angle= label_data$angle, 
+  #           inherit.aes = FALSE )
+  # 
+  # # Add base line information
+  # geom_segment(data=base_data, 
+  #              aes(x = start, 
+  #                  y = -5, 
+  #                  xend = end, 
+  #                  yend = -5), 
+  #              colour = "black", 
+  #              fontface="bold",
+  #              alpha=0.8, 
+  #              size=0.6 , 
+  #              inherit.aes = FALSE )  +
+  # 
+  # geom_text(data=base_data, 
+  #           aes(x = title, 
+  #               y = -18, 
+  #               label=series), 
+  #           hjust=c(1,1,0,0), 
+  #           colour = "black", 
+  #           alpha=0.8, size=4, 
+  #           fontface="bold", 
+  #           inherit.aes = TRUE)
+  geom_text(data=label_data,
+            aes(x=id, y=lines+50, label=key, hjust=hjust),
+            color="black",
+            fontface="bold",
+            alpha=0.6,
+            size=2.5,
+            angle= label_data$angle,
+            inherit.aes = FALSE )
+
+```
+
 1: https://screenrant.com/star-trek-projects-currently-development-movies-shows/
 2: https://icv2.com/articles/columns/view/31899/new-eventbrite-survey-reveals-convention-demographics-spending-patterns
